@@ -65,7 +65,7 @@ class EventsController extends ApiController
             if ($event_id) {
                 $list = $mapper->getEventById($event_id, $verbose, $activeEventsOnly);
                 if (count($list['events']) == 0) {
-                    throw new Exception('Event not found', 404);
+                    throw new NotFoundException('Event not found');
                 }
             } else {
                 // handle the filter parameters
@@ -79,12 +79,12 @@ class EventsController extends ApiController
                     // for pending events we need a logged in user with the correct permissions
                     if ($params["filter"] == 'pending') {
                         if (! isset($request->user_id)) {
-                            throw new Exception("You must be logged in to view pending events", 400);
+                            throw new UnauthorizedException("You must be logged in to view pending events");
                         }
                         $user_mapper      = new UserMapper($db, $request);
                         $canApproveEvents = $user_mapper->isSiteAdmin($request->user_id);
                         if (! $canApproveEvents) {
-                            throw new Exception("You don't have permission to view pending events", 403);
+                            throw new NoAccessException("You don't have permission to view pending events");
                         }
                     }
                 }
@@ -149,7 +149,7 @@ class EventsController extends ApiController
     public function postAction($request, $db)
     {
         if (! isset($request->user_id)) {
-            throw new Exception("You must be logged in to create data", 401);
+            throw new UnauthorizedException("You must be logged in to create data");
         }
         if (isset($request->url_elements[4])) {
             switch ($request->url_elements[4]) {
@@ -359,7 +359,7 @@ class EventsController extends ApiController
     public function deleteAction($request, $db)
     {
         if (! isset($request->user_id)) {
-            throw new Exception("You must be logged in to delete data", 401);
+            throw new UnauthorizedException("You must be logged in to delete data");
         }
         if (isset($request->url_elements[4])) {
             switch ($request->url_elements[4]) {
@@ -382,7 +382,7 @@ class EventsController extends ApiController
     public function putAction($request, $db)
     {
         if (! isset($request->user_id)) {
-            throw new Exception('You must be logged in to edit data', 401);
+            throw new UnauthorizedException('You must be logged in to edit data');
         }
 
         $event_id = $this->getItemId($request);
@@ -391,14 +391,14 @@ class EventsController extends ApiController
             $event_mapper   = new EventMapper($db, $request);
             $existing_event = $event_mapper->getEventById($event_id, true);
             if (! $existing_event) {
-                throw new Exception(sprintf(
+                throw new NotFoundException(sprintf(
                     'There is no event with ID "%s"',
                     $event_id
                 ));
             }
 
             if (!$event_mapper->thisUserHasAdminOn($event_id)) {
-                throw new Exception('You are not an host for this event', 403);
+                throw new NoAccessException('You are not an host for this event');
             }
 
             // initialise a new set of fields to save
@@ -553,10 +553,10 @@ class EventsController extends ApiController
         $event_mapper = new EventMapper($db, $request);
         $events = $event_mapper->getEventById($event_id, true);
         if (!$events || $events['meta']['count'] == 0) {
-            throw new Exception("Associated event not found", 404);
+            throw new NotFoundException("Associated event not found");
         }
         if (!$event_mapper->thisUserHasAdminOn($event_id)) {
-            throw new Exception('You do not have permission to edit this track', 403);
+            throw new NoAccessException('You do not have permission to edit this track');
         }
 
         // validate fields
@@ -578,7 +578,7 @@ class EventsController extends ApiController
             $errors[] = "'track_description' is a required field";
         }
         if ($errors) {
-            throw new Exception(implode(". ", $errors), 400);
+            throw new InvalidPayloadException(implode(". ", $errors));
         }
 
         $track_mapper = new TrackMapper($db, $request);
@@ -603,14 +603,14 @@ class EventsController extends ApiController
     public function approveAction($request, $db)
     {
         if (! isset($request->user_id)) {
-            throw new Exception("You must be logged in to create data", 401);
+            throw new UnauthorizedException("You must be logged in to create data");
         }
 
         $event_id     = $this->getItemId($request);
         $event_mapper = new EventMapper($db, $request);
 
         if (! $event_mapper->thisUserCanApproveEvents()) {
-            throw new Exception("You are not allowed to approve this event", 403);
+            throw new NoAccessException("You are not allowed to approve this event");
         }
 
         $result = $event_mapper->approve($event_id, $request->user_id);
@@ -643,14 +643,14 @@ class EventsController extends ApiController
     public function rejectAction($request, $db)
     {
         if (! isset($request->user_id)) {
-            throw new Exception("You must be logged in to create data", 401);
+            throw new UnauthorizedException("You must be logged in to create data");
         }
 
         $event_id     = $this->getItemId($request);
         $event_mapper = new EventMapper($db, $request);
 
         if (! $event_mapper->thisUserCanApproveEvents()) {
-            throw new Exception("You are not allowed to reject this event", 403);
+            throw new NoAccessException("You are not allowed to reject this event");
         }
 
         $result = $event_mapper->reject($event_id, $request->user_id);
