@@ -46,6 +46,8 @@ function apiv2Autoload($classname)
         $filename = __DIR__ . '/../services/' . $classname . '.php';
     } elseif (preg_match('/Router?$/', $classname)) {
         $filename = __DIR__ . '/../routers/' . $classname . '.php';
+    } elseif (preg_match('/Exception?$/', $classname)) {
+        $filename = __DIR__ . '/../exceptions/' . $classname . '.php';
     }
 
     if (file_exists($filename)) {
